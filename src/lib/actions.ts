@@ -386,6 +386,8 @@ export const settleMissions = () => {
   for (const anchor of [today, addDays(today, -7)]) {
     const week = weekStart(anchor);
     const over = addDays(week, 6) < today;
+    // A past week only counts if the app was actually used in it.
+    if (over && !data.xp.some((e) => !e.key.startsWith("mission:") && weekStart(e.date) === week)) continue;
     for (const m of missions(data, anchor)) {
       const key = `mission:${week}:${m.id}`;
       if (missionComplete(m, over) && !data.xp.some((e) => e.key === key)) due.push({ key, label: `Misja: ${m.label}` });
