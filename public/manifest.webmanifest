@@ -1,0 +1,21 @@
+{
+  "name": "FOCUS OS",
+  "short_name": "FOCUS OS",
+  "description": "Osobisty system operacyjny: plan dnia, nauka, Aiven, trening i kontrola grania.",
+  "lang": "pl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Zadania", "url": "/tasks" },
+    { "name": "Gaming Control", "url": "/gaming" }
+  ]
+}
