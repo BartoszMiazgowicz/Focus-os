@@ -96,3 +96,6 @@ input, select, textarea { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Grid children default to min-width:auto, which lets one long title push the page wider than the phone. */
+.grid > * { min-width: 0; }

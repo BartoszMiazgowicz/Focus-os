@@ -4,12 +4,12 @@ import { ChevronLeft, ChevronRight, Dumbbell, Gamepad2, Heart, Pencil, Plus } fr
 import { useState } from "react";
 import { BlockRow } from "@/components/plan/block-row";
 import { BlockSheet } from "@/components/plan/block-sheet";
-import { Button, Card, Confirm, cx, Empty, Field, IconButton, Input, Modal, PageHeader, SectionTitle, Segmented, Select } from "@/components/ui/kit";
+import { Button, Card, Confirm, cx, Empty, Field, IconButton, Input, Modal, PageHeader, SectionTitle, Segmented, Select, Textarea } from "@/components/ui/kit";
 import { deleteTemplateBlock, resetTemplate, saveTemplateBlock, setDayPlan } from "@/lib/actions";
 import { CATEGORIES, CATEGORY_IDS, type CategoryId } from "@/lib/categories";
 import { WROCLAW_DAYS } from "@/lib/defaults";
 import { useNow } from "@/lib/hooks";
-import { blockLen, blocksFor, validateBlock } from "@/lib/logic";
+import { blockLen, blocksFor, parsePlanText, planToText, validateBlock } from "@/lib/logic";
 import type { Block } from "@/lib/schema";
 import { toast, useData } from "@/lib/store";
 import { addDays, dateKey, DAY_NAMES, DAY_SHORT, dow, fmtDate, fmtDur, nowMin, parseKey, toMin, uid, weekDays } from "@/lib/time";
@@ -55,6 +55,30 @@ function BlockEditor({ day, block, others, onClose }: { day: number; block: Bloc
           )}
           <Button type="submit" variant="primary" className="flex-1">Zapisz</Button>
         </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** One-off plan for a single date, edited as plain text so it can be pasted in one go. */
+function DayPlanEditor({ date, current, onClose }: { date: string; current: Block[]; onClose: () => void }) {
+  const [text, setText] = useState(() => planToText(current));
+  const [error, setError] = useState("");
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = parsePlanText(text, date);
+    if ("error" in res) return setError(res.error);
+    setDayPlan(date, res.blocks);
+    toast(`Plan na ${fmtDate(date)} zapisany.`, "success");
+    onClose();
+  };
+  return (
+    <Modal open onClose={onClose} title="Plan jednorazowy" description={`${DAY_NAMES[dow(date)]}, ${fmtDate(date)} — tylko ten dzień, szablon tygodnia zostaje bez zmian.`} wide>
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <Field label="Jeden blok w linii: 09:30-11:30 Nazwa" error={error} hint="Możesz wkleić cały plan naraz. Kategoria dobierze się po nazwie.">
+          <Textarea rows={12} value={text} onChange={(e) => setText(e.target.value)} className="font-mono text-[13px]" spellCheck={false} aria-label="Plan dnia" />
+        </Field>
+        <Button type="submit" variant="primary" className="w-full">Zapisz plan na ten dzień</Button>
       </form>
     </Modal>
   );
@@ -114,6 +138,7 @@ export default function PlannerPage() {
   const [sheet, setSheet] = useState<Block | null>(null);
   const [editing, setEditing] = useState<Block | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [dayEditor, setDayEditor] = useState(false);
 
   const days = weekDays(selected);
   const day = dow(selected);
@@ -187,7 +212,7 @@ export default function PlannerPage() {
             <>
               {overridden && (
                 <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-surface-2/70 px-3 py-2 text-[12px] text-muted">
-                  Plan tego dnia został przesunięty.
+                  Ten dzień ma własny plan.
                   <Button
                     variant="ghost"
                     size="sm"
@@ -207,6 +232,9 @@ export default function PlannerPage() {
                   {blocks.map((b) => <BlockRow key={b.id} date={selected} block={b} state={stateOf(b)} onOpen={() => setSheet(b)} />)}
                 </div>
               )}
+              <Button variant="ghost" size="sm" className="mt-3 w-full" onClick={() => setDayEditor(true)}>
+                <Pencil size={14} /> Plan jednorazowy na ten dzień
+              </Button>
             </>
           ) : (
             <>
@@ -238,6 +266,7 @@ export default function PlannerPage() {
       </div>
 
       {sheet && <BlockSheet date={selected} block={sheet} onClose={() => setSheet(null)} />}
+      {dayEditor && <DayPlanEditor date={selected} current={blocks} onClose={() => setDayEditor(false)} />}
       {editing && <BlockEditor day={day} block={editing} others={template} onClose={() => setEditing(null)} />}
       <Confirm
         open={confirmReset}

@@ -23,6 +23,50 @@ export const validateBlock = (block: Block, others: Block[]): string | null => {
   return clash ? `Nakłada się na „${clash.title}” (${clash.start}–${clash.end}).` : null;
 };
 
+const CATEGORY_HINTS: [RegExp, CategoryId][] = [
+  [/si[łl]owni|trening/, "gym"],
+  [/matem|matm/, "math"],
+  [/angiel/, "english"],
+  [/informat|inf\.?04/, "inf04"],
+  [/klient|biznes|aiven|vegan|ofert/, "aiven"],
+  [/python|program|kod|projekt|\bai\b/, "code"],
+  [/zarob|karier|cv|prac/, "career"],
+  [/gry\b|granie/, "gaming"],
+  [/szach|woln|hobby|spacer/, "free"],
+  [/regener|prysznic/, "recovery"],
+  [/rutyn|pobudk|poran/, "routine"],
+  [/[śs]niadan|obiad|kolacj|posi[łl]/, "meal"],
+  [/przerw/, "break"],
+  [/dziewczyn|razem/, "relationship"],
+];
+
+export const guessCategory = (title: string): CategoryId => {
+  const t = title.toLowerCase();
+  return CATEGORY_HINTS.find(([re]) => re.test(t))?.[1] ?? "life";
+};
+
+export const planToText = (blocks: Block[]): string => blocks.map((b) => `${b.start}-${b.end} ${b.title}`).join("\n");
+
+/** Parses a one-off day plan written as lines of "HH:MM-HH:MM Title". */
+export const parsePlanText = (text: string, date: string): { blocks: Block[] } | { error: string } => {
+  const blocks: Block[] = [];
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return { error: "Wpisz przynajmniej jeden blok." };
+  for (const [i, line] of lines.entries()) {
+    const m = line.match(/^(\d{1,2})[:.](\d{2})\s*[-–—]\s*(\d{1,2})[:.](\d{2})[\s|·:-]+(.+)$/);
+    const n = i + 1;
+    if (!m) return { error: `Linia ${n}: użyj formatu „09:30-11:30 Siłownia”.` };
+    const [h1, m1, h2, m2] = [m[1], m[2], m[3], m[4]].map(Number);
+    if (h1 > 23 || h2 > 23 || m1 > 59 || m2 > 59) return { error: `Linia ${n}: nieprawidłowa godzina.` };
+    const title = m[5].replace(/[*|]/g, "").trim().slice(0, 80);
+    const block: Block = { id: `p-${date}-${i}`, start: fromMin(h1 * 60 + m1), end: fromMin(h2 * 60 + m2), title, category: guessCategory(title) };
+    const problem = validateBlock(block, blocks);
+    if (problem) return { error: `Linia ${n}: ${problem}` };
+    blocks.push(block);
+  }
+  return { blocks: blocks.sort((a, b) => toMin(a.start) - toMin(b.start)) };
+};
+
 export interface ShiftProposal {
   blocks: Block[];
   changes: string[];
